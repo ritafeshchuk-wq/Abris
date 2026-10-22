@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Программа для ЭВМ «Абрис», версия 1.67. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
+<!-- Программа для ЭВМ «Абрис», версия 1.83. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
 <html lang="ru"><head><meta name="author" content="d1sco"><meta name="copyright" content="© d1sco, 2026"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Абрис — съёмка в чертёж и папки</title>
 <style>/* Программа для ЭВМ «Абрис». © d1sco, 2026 */
@@ -592,7 +592,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 /* Абрис — ядро: справочник кодов, чтение PCO/ARE, заявки из PDF, модель трассы */
 (function (root) {
   const G = (root.GEO = root.GEO || {});
-  G.APP = { name: 'Абрис', version: '1.82', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
+  G.APP = { name: 'Абрис', version: '1.83', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
 
   /* ---------- Эталонный профиль кодировки ---------- */
   // role: line — точки линии (соединяются по ".."), well — элемент колодца/камеры, point — отдельный знак, control — обоснование
@@ -1962,8 +1962,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     it.push(S(30, 28, 'Состояние трассы на момент проведения съемки:', { bold: true, size: 15 }), H('state', 30, 33, 150, 49));
     const stl = wrap(obj.state || '', 13, 146, true); for (let i = 0; i < 5; i++) { const y = 40 + i * 10; it.push(L(30, y + 0.6, 180, y + 0.6)); if (stl[i]) it.push(K('state', F(32, y - 0.4, stl[i]))); }
     it.push(S(30, 105, 'Подпись представителя заказчика:', { bold: true }));
-    const row = (label, y, val, key) => { const w = textW(label, 12, true); it.push(S(30, y, label), L(30 + w + 1.5, y + 0.6, 180, y + 0.6)); if (key) it.push(H(key, 30 + w + 1.5, y - 5.5, 150 - w - 1.5, 7)); if (val) it.push(K(key, F(30 + w + 4, y - 0.3, val))); };
-    row('Фирма:', 113, ''); row('Должность:', 121, ''); row('Ф.И.О.', 129, ''); row('Объем выполненных работ:', 137, obj.volume, 'volume'); it.push(L(30, 145.6, 180, 145.6), L(30, 153.6, 180, 153.6));
+    const row = (label, y, val, key) => { const w = textW(label, 12, true); it.push(S(30, y, label), L(30 + w + 1.5, y + 0.6, 180, y + 0.6)); if (key) it.push(H(key, 30 + w + 1.5, y - 5.5, 150 - w - 1.5, 7));
+      if (val) { const room = 180 - (30 + w + 4) - 1; let sz = 13; while (sz > 8 && textW(val, sz, true) > room) sz -= 0.5; it.push(K(key, F(30 + w + 4, y - 0.3, val, { size: sz }))); } };   /* длинное название фирмы ужимается, чтобы уместиться на строке */
+    const cr = obj.customerRep || {}; row('Фирма:', 113, cr.firm, 'custFirm'); row('Должность:', 121, cr.position, 'custPos'); row('Ф.И.О.', 129, cr.name, 'custName'); row('Объем выполненных работ:', 137, obj.volume, 'volume'); it.push(L(30, 145.6, 180, 145.6), L(30, 153.6, 180, 153.6));
     const ins = obj.instruments || {};
     [['Тахеометр', ins.tachModel, ins.tachNo, 'tachModel', 'tachNo'], ['Эл. рулетка', ins.tapeModel, ins.tapeNo, 'tapeModel', 'tapeNo'], ['Трассоискатель', ins.locModel, ins.locNo, 'locModel', 'locNo'], ['GPS', ins.gpsModel, ins.gpsNo, 'gpsModel', 'gpsNo']].forEach((r, i) => {
       const y = 175 + i * 7.5; it.push(S(30, y, r[0], { bold: true }), S(84, y, '№', { bold: true }), L(90, y + 0.6, 125, y + 0.6));
@@ -2323,7 +2324,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       profile: G.defaultProfile(),
       people: { dept: '', chief: '', crew: ['', '', ''], crewMode: 'pdf', performers: [], active: '' },
       instruments: { tachModel: '', tachNo: '', tapeModel: '', tapeNo: '', locModel: '', locNo: '', gpsModel: '', gpsNo: '' },
-      texts: { state: 'снято по колодцам', volume: 'в полном объеме', statePresets: ['снято по колодцам', 'снято в открытой траншее', 'снято по шурфам', 'трасса засыпана, снято трассоискателем'], shortAddr: true },
+      texts: { state: 'снято по колодцам', volume: 'в полном объеме', statePresets: ['снято по колодцам', 'снято в открытой траншее', 'снято по шурфам', 'трасса засыпана, снято трассоискателем'], shortAddr: true, custAuto: true, custFirm: '', custPos: '', custName: '' },
       draw: { nodesPerPage: 4, dxfBlocks: true, dxfBlockScale: 0.2, showDiff: true, diffOnly: true, diffTolXY: 0.05, diffTolH: 0.03, withPhotos: true, photoIcons: true, photoTimeTol: 180, photoGpsTol: 15, photosPerPage: 6, catalogOff1: true, pagesV2: true, groupScale: 500, withInsets: true, withNodes: true, lineLabel: 'pipes', stripSuffix: true, keepOrig: true, withSections: true, ringDiam: 0.65, maxScale: 1000, tileScale: 500, showControl: false, withLengths: false, withCatalog: true, penColor: '#1f3a93' },
       org: { top: 'Москомархитектура', name: 'ГБУ «МОСГОРГЕОТРЕСТ»', address: '125040, г. Москва, Ленинградский проспект, д. 11', phone: 'Тел: (499) 251-36-14', logoText: 'МОСГОРГЕОТРЕСТ' },
       logo: '', ui: { accent: '#1d1e20' },
@@ -2437,6 +2438,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       chief: st.people.chief, dept: st.people.dept,
       length: o.model.length > 0 ? String(Math.round(o.model.length)) : '', pointCount: o.model.surveyCount ? String(o.model.surveyCount) : '',
       state: st.texts.state, volume: st.texts.volume,
+      // представитель заказчика: из заявки (заказчик, прораб), если включено; иначе — значения по умолчанию из настроек
+      custFirm: (st.texts.custAuto !== false && r && r.customer) || st.texts.custFirm || '', custPos: (st.texts.custAuto !== false && r && r.foreman) ? 'прораб' : (st.texts.custPos || ''), custName: (st.texts.custAuto !== false && r && r.foreman) || st.texts.custName || '',
       tachModel: hasTs || !hasAny ? ins.tachModel : '', tachNo: hasTs ? (tsFile.job.serial || ins.tachNo) : (hasAny ? '' : ins.tachNo), tapeModel: ins.tapeModel, tapeNo: ins.tapeNo, locModel: ins.locModel, locNo: ins.locNo,
       gpsModel: hasGps ? (gpsFile.job.instrument || ins.gpsModel) : (hasAny ? '' : ins.gpsModel), gpsNo: hasGps ? (gpsFile.job.serial || ins.gpsNo) : (hasAny ? '' : ins.gpsNo),
       c1: '', c2: '', z1: '', z2: '', t1: '', t2: '', perfPos: act.position || '', perfName: act.name || '', perfId: act.id || '',
@@ -2444,7 +2447,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     for (const k in auto) if (!o.edited[k]) o.f[k] = auto[k];
     const perf = st.people.performers.find(p => p.id === o.f.perfId);
     const f = o.f;
-    o.obj = { tlg: f.tlg, date: f.date, year: f.year, abrisNo: f.abrisNo, address: f.address, network: f.network, crew: [f.crew1, f.crew2, f.crew3], chief: f.chief, dept: f.dept, length: f.length, pointCount: f.pointCount, state: f.state, volume: f.volume,
+    o.obj = { tlg: f.tlg, date: f.date, year: f.year, abrisNo: f.abrisNo, address: f.address, network: f.network, crew: [f.crew1, f.crew2, f.crew3], chief: f.chief, dept: f.dept, length: f.length, pointCount: f.pointCount, state: f.state, volume: f.volume, customerRep: { firm: f.custFirm, position: f.custPos, name: f.custName },
       instruments: { tachModel: f.tachModel, tachNo: f.tachNo, tapeModel: f.tapeModel, tapeNo: f.tapeNo, locModel: f.locModel, locNo: f.locNo, gpsModel: f.gpsModel, gpsNo: f.gpsNo }, calib: { c1: f.c1, c2: f.c2, z1: f.z1, z2: f.z2, t1: f.t1, t2: f.t2 },
       performer: { position: f.perfPos, name: f.perfName, signature: perf ? perf.signature : '' } };
     // фото объекта: точка задана вручную или находится сама; точка из колодца → фото относится к его обечайке
@@ -2925,6 +2928,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       h('div', { class: 'grid' }, h('label', { class: 'fld wide' }, h('span', {}, 'Таблица кодов сети'), netSel)), piecesBox(o), pointsBox(o),
       h('h3', {}, 'Задняя страница'),
       h('div', { class: 'grid' }, field(o, 'state', 'Состояние трассы', { wide: true, list: 'presets' }), field(o, 'volume', 'Объём выполненных работ', { wide: true }),
+        field(o, 'custFirm', 'Представитель заказчика: фирма', { wide: true }), field(o, 'custPos', 'Должность'), field(o, 'custName', 'Ф.И.О.'),
         h('label', { class: 'fld wide' }, h('span', {}, 'Работу выполнил'), perfSel),
         field(o, 'gpsModel', 'GPS'), field(o, 'gpsNo', 'GPS №'), field(o, 'tachModel', 'Тахеометр'), field(o, 'tachNo', 'Тахеометр №'), field(o, 'tapeNo', 'Рулетка №'), field(o, 'locNo', 'Трассоискатель №'),
         field(o, 'c1', 'Коллимация до'), field(o, 'c2', 'после'), field(o, 'z1', 'Место зенита до'), field(o, 'z2', 'после'), field(o, 't1', 'Наклон оси до'), field(o, 't2', 'после')),
@@ -3094,6 +3098,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const ta = h('textarea', { rows: 5, oninput: e => { st.texts.statePresets = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); mark(); } }); ta.value = st.texts.statePresets.join('\n');
       body = h('div', {}, h('h3', {}, 'Приборы по умолчанию'), h('p', { class: 'hint' }, 'Серийные номера тахеометра и GPS программа берёт из файлов съёмки и ставит на задней странице напротив «№». Значения ниже используются, только если в файле номера нет.'), h('div', { class: 'grid two' }, inp(st.instruments, 'gpsModel', 'GPS, модель', { ph: 'берётся из файла съёмки' }), inp(st.instruments, 'gpsNo', 'GPS №'), inp(st.instruments, 'tachModel', 'Тахеометр, модель'), inp(st.instruments, 'tachNo', 'Тахеометр №'), inp(st.instruments, 'tapeModel', 'Эл. рулетка, модель'), inp(st.instruments, 'tapeNo', 'Эл. рулетка №'), inp(st.instruments, 'locModel', 'Трассоискатель, модель'), inp(st.instruments, 'locNo', 'Трассоискатель №')),
         h('h3', {}, 'Тексты задней страницы'), h('div', { class: 'grid two' }, inp(st.texts, 'state', 'Состояние трассы по умолчанию'), inp(st.texts, 'volume', 'Объём выполненных работ')),
+        h('h3', {}, 'Подпись представителя заказчика'), chk(st.texts, 'custAuto', 'Брать из заявки: фирма — колонка «Заказчик», Ф.И.О. — «Прораб», должность — «прораб»'),
+        h('p', { class: 'hint' }, 'Если в заявке пусто или подстановка выключена — ставятся значения ниже. Оставьте поля пустыми, чтобы строки на бланке остались чистыми для заполнения от руки.'),
+        h('div', { class: 'grid two' }, inp(st.texts, 'custFirm', 'Фирма по умолчанию'), inp(st.texts, 'custPos', 'Должность по умолчанию'), inp(st.texts, 'custName', 'Ф.И.О. по умолчанию')),
         h('label', { class: 'fld wide' }, h('span', {}, 'Заготовки «Состояние трассы», по одной в строке'), ta), chk(st.texts, 'shortAddr', 'Сокращать адрес: «Город Москва, Улица…» → «г. Москва, ул. …»'));
     }
     if (tab === 'sheet') body = h('div', {},
