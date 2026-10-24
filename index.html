@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Программа для ЭВМ «Абрис», версия 1.84. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
+<!-- Программа для ЭВМ «Абрис», версия 1.85. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
 <html lang="ru"><head><meta name="author" content="d1sco"><meta name="copyright" content="© d1sco, 2026"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Абрис — съёмка в чертёж и папки</title>
 <style>/* Программа для ЭВМ «Абрис». © d1sco, 2026 */
@@ -592,7 +592,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 /* Абрис — ядро: справочник кодов, чтение PCO/ARE, заявки из PDF, модель трассы */
 (function (root) {
   const G = (root.GEO = root.GEO || {});
-  G.APP = { name: 'Абрис', version: '1.84', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
+  G.APP = { name: 'Абрис', version: '1.85', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
 
   /* ---------- Эталонный профиль кодировки ---------- */
   // role: line — точки линии (соединяются по ".."), well — элемент колодца/камеры, point — отдельный знак, control — обоснование
@@ -1259,6 +1259,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (net) offMap.forEach((v, base) => { const sg = suggestCode(profile, net, base).filter(c => c.dist <= 0.5); if (sg.length) unknown.push({ base, points: v.names, suggestions: sg, officialName: v.name }); });
     unknown.forEach(u => { if (!u.suggestions.length) warnings.push('Кода «' + (u.base || 'пусто') + '» нет в таблице (точки ' + u.points.join(', ') + ')'); });
     const chambers = buildChambers(pts, warnings, opts.roundChambers || {}, segs);
+    // контуры, заданные вручную на листе: пилон по 2 углам, ящик по 3 углам, фигура по точкам — со своей подписью
+    (opts.userShapes || []).forEach(us => {
+      const run = (us.pts || []).map(n => pts.find(p => String(p.name) === String(n))).filter(Boolean); if (run.length < 2) return;
+      for (let i = chambers.length - 1; i >= 0; i--) if (chambers[i].points.some(q => run.includes(q))) chambers.splice(i, 1);   // авто-контур на этих точках заменяется ручным
+      const kind = us.kind === 'rect2' ? 'rect2' : us.kind === 'poly' ? 'poly' : '';
+      const fake = run.map(p => Object.assign({}, p, { role: 'chamber', shapeKind: kind, shapeLabel: us.label || '', round: false, slabGroup: null, pc: Object.assign({}, p.pc, { base: 'user', link: 'prev' }) }));
+      let got;
+      if (kind === 'poly') { const cx = run.reduce((t, q) => t + q.x, 0) / run.length, cy = run.reduce((t, q) => t + q.y, 0) / run.length; const order = us.order === 'as' ? run.slice() : run.slice().sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+        got = [{ points: run, built: null, poly: order.map(q => [q.x, q.y]), color: run[0].color, shapeLabel: us.label || '' }]; }
+      else got = buildChambers(us.kind === 'rect2' ? fake.slice(0, 2) : fake.slice(0, 3), warnings, {}, segs);
+      got.forEach(ch => { ch.user = us.id; ch.points = run; ch.roundAsk = false; if (!us.label) ch.shapeLabel = ''; chambers.push(ch); });
+    });
     const wells = pts.filter(p => p.well).map(p => {
       let best = null; segs.forEach(sg => [[sg.a, sg.b], [sg.b, sg.a]].forEach(([u, v]) => { const d = Math.hypot(u.x - p.x, u.y - p.y); if (d <= Math.max(3, p.well.l) && (!best || d < best.d)) best = { d, az: Math.atan2(v.y - u.y, v.x - u.x) }; }));
       const manual = wellAngles && wellAngles[p.name] != null && wellAngles[p.name] !== '' && isFinite(+wellAngles[p.name]);
@@ -2376,7 +2388,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- объекты ---------- */
   function rebuild() {
     const prev = new Map(S.objects.map(o => [o.key, o])), objs = [];
-    const get = (key, tlg) => { let o = objs.find(x => x.key === key); if (!o) { const p = prev.get(key); o = { key, tlg, row: null, survey: null, files: [], f: p ? p.f : {}, edited: p ? p.edited : {}, fix: p ? p.fix : {}, fixSkip: p ? p.fixSkip : {}, codeEdit: p ? p.codeEdit : {}, editMark: p ? (p.editMark || {}) : {}, paint: p ? (p.paint || { sg: {}, wl: {} }) : { sg: {}, wl: {} }, wellAngle: p ? p.wellAngle : {}, slabSkip: p ? p.slabSkip : {}, sheetOf: p ? (p.sheetOf || {}) : {}, scaleOf: p ? (p.scaleOf || {}) : {}, roundCh: p ? (p.roundCh || {}) : {}, trench: p ? p.trench : undefined, clockShift: p ? (p.clockShift || 0) : 0, showDiff: p ? p.showDiff : undefined, diffOnly: p ? p.diffOnly : undefined }; objs.push(o); } return o; };
+    const get = (key, tlg) => { let o = objs.find(x => x.key === key); if (!o) { const p = prev.get(key); o = { key, tlg, row: null, survey: null, files: [], f: p ? p.f : {}, edited: p ? p.edited : {}, fix: p ? p.fix : {}, fixSkip: p ? p.fixSkip : {}, codeEdit: p ? p.codeEdit : {}, editMark: p ? (p.editMark || {}) : {}, paint: p ? (p.paint || { sg: {}, wl: {} }) : { sg: {}, wl: {} }, wellAngle: p ? p.wellAngle : {}, slabSkip: p ? p.slabSkip : {}, sheetOf: p ? (p.sheetOf || {}) : {}, scaleOf: p ? (p.scaleOf || {}) : {}, roundCh: p ? (p.roundCh || {}) : {}, userShapes: p ? (p.userShapes || []) : [], trench: p ? p.trench : undefined, clockShift: p ? (p.clockShift || 0) : 0, showDiff: p ? p.showDiff : undefined, diffOnly: p ? p.diffOnly : undefined }; objs.push(o); } return o; };
     S.rows.forEach(r => { get(G.normJob(r.tlg), r.tlg).row = r; });
     // ключ объекта: имя файла. Заявка находится по точному совпадению, по началу имени («35959-26dop» → заявка 35959-26) или по имени проекта внутри файла
     const rowKeys = S.rows.map(r => G.normJob(r.tlg)).sort((u, v) => v.length - u.length);
@@ -2423,7 +2435,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     o.gnbTr = o.job ? G.gnbPromery(o.job, { diam: st.draw.gnbDiam || '160' }) : {};
     o.allEdits = Object.assign({}, o.newTr, o.gnbTr, o.codeEdit);
     const job = o.job ? G.renameJob(G.applyFixes(o.job, o.fix, o.allEdits), o.rename || {}) : { name: o.tlg, points: [] };
-    o.model = G.buildModel(job, st.profile, o.edited.netKey ? o.f.netKey : (r ? r.network : ''), { wellAngles: o.wellAngle, noSlabGuess: o.slabSkip, roundChambers: o.roundCh || {}, noTypoAsk: o.fixSkip, trenchAuto: o.trench === 'yes', cutLinks: o.cutLinks || {}, segDiam: o.segDiam || {} });
+    o.model = G.buildModel(job, st.profile, o.edited.netKey ? o.f.netKey : (r ? r.network : ''), { wellAngles: o.wellAngle, noSlabGuess: o.slabSkip, roundChambers: o.roundCh || {}, userShapes: o.userShapes || [], noTypoAsk: o.fixSkip, trenchAuto: o.trench === 'yes', cutLinks: o.cutLinks || {}, segDiam: o.segDiam || {} });
     const act = st.people.performers.find(p => p.id === st.people.active) || st.people.performers[0] || {};
     const date = r && r.date ? r.date : G.ruDate(job.date), ins = st.instruments;
     // состав бригады: из заявки (колонка «Исполнитель»), а если там пусто или выбран «всегда мой состав» — из настроек
@@ -2705,8 +2717,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   /* щелчок по контуру колодца или камеры: окраска в оранжевый */
   function wellMenu(o, name, ev) {
-    const on = !!o.paint.wl[name];
-    popMenu(ev, 'колодец у т. ' + name, [
+    const on = !!o.paint.wl[name], us = (o.userShapes || []).find(x => x.pts.map(String).includes(String(name)));
+    popMenu(ev, us ? 'контур «' + (us.label || 'без подписи') + '» · т. ' + us.pts.join(', ') : 'колодец у т. ' + name, [
+      us ? ['Изменить контур…', () => shapeDialog(o, us.pts.slice(), us)] : null,
+      us ? ['Удалить контур', () => { o.userShapes = o.userShapes.filter(x => x !== us); compute(o); render(); toast('Контур удалён'); }] : null,
       [on ? 'Снять оранжевый' : 'Окрасить в оранжевый', () => { if (on) delete o.paint.wl[name]; else o.paint.wl[name] = true; compute(o); render(); toast('Колодец у т. ' + name + (on ? ': окраска снята' : ' окрашен оранжевым')); }, !on],
       ['Отмена', null]]);
   }
@@ -2717,6 +2731,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const m = h('div', { class: 'pt-menu', role: 'menu' }, h('b', {}, 'т. ' + name + ' · ' + p.pc.raw + (p.codeWas ? ' (было ' + p.codeWas + ')' : '')),
       h('button', { class: 'btn small', onclick: () => { close(); inlineCode(o, name); } }, 'Исправить код…'),
       h('button', { class: 'btn small', onclick: () => { close(); inlineName(o, name); } }, 'Переименовать пикет…'),
+      h('button', { class: 'btn small', onclick: () => { close(); shapeStart(o, name); } }, 'Нарисовать контур от этой точки…'),
       p.role === 'point' && o.model.segs.some(sg => sg.toPole && (sg.a === p || sg.b === p)) ? h('button', { class: 'btn small', onclick: () => { close(); const sg = o.model.segs.find(x => x.toPole && (x.a === p || x.b === p)); inlineSeg(o, sg.a.name + '|' + sg.b.name, ev); } }, 'Трубы до опоры…') : null,
       h('button', { class: 'btn small' + (on ? '' : ' primary'), onclick: () => { close(); if (on) delete o.editMark[name]; else o.editMark[name] = true; compute(o); render(); toast(on ? 'Точка ' + name + ': выделение снято' : 'Точка ' + name + ' выделена оранжевым'); } }, on ? 'Снять оранжевый' : 'Окрасить в оранжевый'),
       h('button', { class: 'btn small', onclick: close }, 'Отмена'));
@@ -2724,12 +2739,39 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const away = e => { if (!m.contains(e.target)) close(); }; setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
     sheet.append(m);
   }
+  /* контур вручную: выбрать точки на листе → вид (по 2 противоположным углам / по 3 углам / по всем точкам) и подпись */
+  function shapeStart(o, name) { S.linkMode = false; S.shapePick = { key: o.key, pts: [String(name)] }; render(); shapeBar(); toast('Щёлкайте остальные углы контура, затем «Готово»'); }
+  function shapeToggle(o, name) { const sp = S.shapePick; if (!sp || sp.key !== o.key) return; name = String(name); const i = sp.pts.indexOf(name); if (i >= 0) sp.pts.splice(i, 1); else sp.pts.push(name); shapeMarks($('.sheet')); shapeBar(); }
+  function shapeEnd() { S.shapePick = null; const b = $('#shape-bar'); if (b) b.remove(); render(); }
+  function shapeMarks(sheet) { if (!sheet) return; sheet.querySelectorAll('.shape-pick').forEach(e => { e.classList.remove('shape-pick'); e.style.fill = ''; e.style.stroke = ''; e.style.strokeWidth = ''; }); const sp = S.shapePick; if (!sp) return;
+    sp.pts.forEach(n => sheet.querySelectorAll('[data-key="pp:' + n + '"]').forEach(e => { e.classList.add('shape-pick'); e.style.fill = 'rgba(255,107,0,.45)'; e.style.stroke = '#ff6b00'; e.style.strokeWidth = '0.6'; })); }
+  function shapeBar() { const sp = S.shapePick; let b = $('#shape-bar'); if (b) b.remove(); if (!sp) return; const o = S.objects.find(x => x.key === sp.key); if (!o) return;
+    b = h('div', { id: 'shape-bar', role: 'toolbar', 'aria-label': 'Контур вручную', style: 'position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:#fff;border:2px solid #ff6b00;border-radius:8px;padding:8px 12px;z-index:45;display:flex;gap:8px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:92vw;flex-wrap:wrap' },
+      h('span', {}, 'Контур: точки ' + (sp.pts.join(', ') || '—') + ' — щёлкните точку, чтобы добавить или убрать'),
+      h('button', { class: 'btn small primary', disabled: sp.pts.length < 2, onclick: () => { const pts = sp.pts.slice(); S.shapePick = null; b.remove(); render(); shapeDialog(o, pts, null); } }, 'Готово'),
+      h('button', { class: 'btn small', onclick: shapeEnd }, 'Отмена'));
+    document.body.append(b); }
+  function shapeDialog(o, pts, us) {
+    const n = pts.length, kinds = [['rect2', 'Прямоугольник по 2 противоположным углам', n >= 2], ['rect3', 'Прямоугольник по 3 углам — 4-й достроить пунктиром', n >= 3], ['poly', 'Фигура по всем точкам (обход вокруг центра)', n >= 3], ['polyas', 'Фигура по точкам в порядке выбора', n >= 3]].filter(k => k[2]);
+    let kind = us ? (us.kind === 'poly' && us.order === 'as' ? 'polyas' : us.kind) : (n === 2 ? 'rect2' : n === 3 ? 'rect3' : 'poly');
+    const lab = h('input', { type: 'text', value: us ? (us.label || '') : 'пилон', list: 'shape-labels', 'aria-label': 'Подпись внутри контура', style: 'width:100%' });
+    const dl = h('datalist', { id: 'shape-labels' }, ...['пилон', 'ВРЩ', 'шкаф', 'м/я', 'ТП', 'КНС', 'камера', 'фундамент', 'киоск', 'павильон'].map(v => h('option', { value: v })));
+    const radios = kinds.map(([k, t]) => h('label', { style: 'display:block;margin:4px 0' }, h('input', { type: 'radio', name: 'shkind', checked: k === kind, onchange: () => { kind = k; } }), ' ' + t));
+    modal('Контур по точкам ' + pts.join(', '), h('div', {}, h('p', {}, 'Как рисовать:'), ...radios, h('p', { style: 'margin-top:12px' }, 'Подпись внутри (можно оставить пустой):'), lab, dl,
+      h('p', { class: 'muted', style: 'margin-top:8px' }, 'Контур рисуется на абрисе, на схеме и в DXF (слой КАМЕРЫ). Коды точек не меняются. Убрать или изменить — щелчок по контуру.'),
+      h('div', { style: 'display:flex;gap:8px;margin-top:12px' },
+        h('button', { class: 'btn primary', onclick: () => { const rec = { id: us ? us.id : 'u' + Date.now(), pts: pts.map(String), kind: kind === 'polyas' ? 'poly' : kind, order: kind === 'polyas' ? 'as' : '', label: lab.value.trim() };
+          o.userShapes = (o.userShapes || []).filter(x => x !== us && !x.pts.some(q => rec.pts.includes(q))); o.userShapes.push(rec); closeModal(); compute(o); render(); toast('Контур ' + (rec.label ? '«' + rec.label + '» ' : '') + 'по точкам ' + rec.pts.join(', ') + ' добавлен'); } }, us ? 'Сохранить' : 'Нарисовать'),
+        h('button', { class: 'btn', onclick: closeModal }, 'Отмена'))));
+    setTimeout(() => { lab.focus(); lab.select(); }, 30);
+  }
   function bindInline(o, sheet) {
+    setTimeout(() => shapeMarks(sheet), 0);
     let last = { k: '', t: 0 }; const keyOf = e => { const n = e.target.closest && e.target.closest('[data-key]'); return n ? n.getAttribute('data-key') : ''; };
     const open = (k, e) => { if (k.startsWith('pt:') || k.startsWith('pp:')) inlineCode(o, k.slice(3)); else if (k.startsWith('sg:')) segMenu(o, k.slice(3), e); else if (k.startsWith('wl:')) wellMenu(o, k.slice(3), e); else inlineEdit(o, k); };
-    sheet.addEventListener('click', e => { const k = keyOf(e); if (!k || $('.inline-edit')) return; if (S.linkMode && (k.startsWith('sg:') || k.startsWith('pp:'))) return; if (k.startsWith('sg:') || k.startsWith('wl:')) { e.preventDefault(); open(k, e); } else if (k.startsWith('pp:')) { e.preventDefault(); pointMenu(o, k.slice(3), e); } }); // по линии и по точке достаточно одного клика
-    sheet.addEventListener('dblclick', e => { const k = keyOf(e); if (k) { e.preventDefault(); open(k, e); } });
-    sheet.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') return; const k = keyOf(e), now = Date.now(); if (k && last.k === k && now - last.t < 420) { last = { k: '', t: 0 }; open(k, e); } else last = { k, t: now }; });
+    sheet.addEventListener('click', e => { const k = keyOf(e); if (S.shapePick && k && (k.startsWith('pp:') || k.startsWith('pt:'))) { e.preventDefault(); e.stopPropagation(); shapeToggle(o, k.slice(3)); return; } if (!k || $('.inline-edit')) return; if (S.linkMode && (k.startsWith('sg:') || k.startsWith('pp:'))) return; if (k.startsWith('sg:') || k.startsWith('wl:')) { e.preventDefault(); open(k, e); } else if (k.startsWith('pp:')) { e.preventDefault(); pointMenu(o, k.slice(3), e); } }); // по линии и по точке достаточно одного клика
+    sheet.addEventListener('dblclick', e => { if (S.shapePick) return; const k = keyOf(e); if (k) { e.preventDefault(); open(k, e); } });
+    sheet.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || S.shapePick) return; const k = keyOf(e), now = Date.now(); if (k && last.k === k && now - last.t < 420) { last = { k: '', t: 0 }; open(k, e); } else last = { k, t: now }; });
   }
 
   /* правка соединений прямо на листе, как в AutoCAD: протянуть от точки к точке — соединить/разъединить; линия — выделить, Del — удалить;
