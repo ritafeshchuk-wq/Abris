@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Программа для ЭВМ «Абрис», версия 1.85. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
+<!-- Программа для ЭВМ «Абрис», версия 1.86. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
 <html lang="ru"><head><meta name="author" content="d1sco"><meta name="copyright" content="© d1sco, 2026"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Абрис — съёмка в чертёж и папки</title>
 <style>/* Программа для ЭВМ «Абрис». © d1sco, 2026 */
@@ -592,7 +592,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 /* Абрис — ядро: справочник кодов, чтение PCO/ARE, заявки из PDF, модель трассы */
 (function (root) {
   const G = (root.GEO = root.GEO || {});
-  G.APP = { name: 'Абрис', version: '1.85', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
+  G.APP = { name: 'Абрис', version: '1.86', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
 
   /* ---------- Эталонный профиль кодировки ---------- */
   // role: line — точки линии (соединяются по ".."), well — элемент колодца/камеры, point — отдельный знак, control — обоснование
@@ -1271,6 +1271,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       else got = buildChambers(us.kind === 'rect2' ? fake.slice(0, 2) : fake.slice(0, 3), warnings, {}, segs);
       got.forEach(ch => { ch.user = us.id; ch.points = run; ch.roundAsk = false; if (!us.label) ch.shapeLabel = ''; chambers.push(ch); });
     });
+    { const hide = opts.hideChambers || {}; for (let i = chambers.length - 1; i >= 0; i--) if (!chambers[i].user && (chambers[i].points || []).some(q => hide[q.name])) chambers.splice(i, 1); }   // контуры программы, убранные вручную
     const wells = pts.filter(p => p.well).map(p => {
       let best = null; segs.forEach(sg => [[sg.a, sg.b], [sg.b, sg.a]].forEach(([u, v]) => { const d = Math.hypot(u.x - p.x, u.y - p.y); if (d <= Math.max(3, p.well.l) && (!best || d < best.d)) best = { d, az: Math.atan2(v.y - u.y, v.x - u.x) }; }));
       const manual = wellAngles && wellAngles[p.name] != null && wellAngles[p.name] !== '' && isFinite(+wellAngles[p.name]);
@@ -1512,7 +1513,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         for (let i = 0; i < 36; i += 3) { const a = i * Math.PI / 18, b = (i + 3) * Math.PI / 18; chLines.push([cx + r * Math.cos(a), cy + r * Math.sin(a), cx + r * Math.cos(b), cy + r * Math.sin(b)]); }
         return; }
       const P = ch.poly.map(q => [px(q[1]), py(q[0])]), n = P.length, closed = n >= 3, cpk = !opt.mini && st.paint && st.paint.wl && ch.points && ch.points[0] && st.paint.wl[ch.points[0].name];
-      if (!opt.mini && closed && ch.points && ch.points[0]) items.push({ t: 'poly', pts: P, close: true, w: 0.01, c: 'transparent', fill: null, z: 1, key: 'wl:' + ch.points[0].name });
+      if (!opt.mini && n >= 2 && ch.points && ch.points[0]) items.push({ t: 'poly', pts: P, close: closed, w: 0.01, c: 'transparent', fill: null, z: 1, key: 'wl:' + ch.points[0].name });
       if (ch.shapeLabel && !opt.mini && closed) { const cx = P.reduce((t, q) => t + q[0], 0) / n, cy = P.reduce((t, q) => t + q[1], 0) / n, w = textW(ch.shapeLabel, 6.5, false, true); items.push(T(cx, cy + 1.1, ch.shapeLabel, { size: 6.5, bold: true, c: INK, anchor: 'middle', halo: true, z: 3 })); lateObst.push({ x: cx - w / 2, y: cy - 1.6, w, h: 3.2 }); }
       for (let i = 0; i < (closed ? n : n - 1); i++) { const a = P[i], b = P[(i + 1) % n]; const builtSide = ch.built && (i === 2 || i === 3);
         chLines.push([a[0], a[1], b[0], b[1]]);
@@ -2125,7 +2126,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       else if (it.t === 'rect') o += `<rect x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" fill="${it.fill || 'none'}" stroke="${it.lw ? it.c : 'none'}" stroke-width="${it.lw}"/>`;
       else if (it.t === 'circle') o += `<circle cx="${n(it.x)}" cy="${n(it.y)}" r="${it.r}" fill="${it.fill || 'none'}" stroke="${it.lw ? it.c : 'none'}" stroke-width="${it.lw}"/>`;
       else if (it.t === 'poly') { const d = `M${it.pts.map(p => n(p[0]) + ' ' + n(p[1])).join('L')}${it.close ? 'Z' : ''}`; if (it.c !== 'transparent' || it.fill) o += `<path d="${d}" fill="${it.fill || 'none'}" stroke="${it.c}" stroke-width="${it.w}" stroke-linejoin="round"/>`;
-        if (it.key) o += `<path d="${d}" fill="none" stroke="transparent" stroke-width="2.4" data-key="${esc(it.key)}" class="edl"><title>Клик — окрасить колодец</title></path>`; }
+        if (it.key) o += `<path d="${d}" fill="none" stroke="transparent" stroke-width="${/^wl:/.test(it.key) ? 3.6 : 2.4}" data-key="${esc(it.key)}" class="edl"><title>Клик — контур: изменить, удалить, окрасить</title></path>`; }
       else if (it.t === 'image') o += `<image href="${it.data}" x="${n(it.x)}" y="${n(it.y)}" width="${it.w}" height="${it.h}" preserveAspectRatio="xMidYMid meet"/>`;
       else if (it.t === 'clip') { const id = 'cl' + (++clipSeq); o += `<clipPath id="${id}"><rect x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}"/></clipPath><g clip-path="url(#${id})">${svgItems(it.items)}</g>`; }
       else if (it.t === 'hitc') o += `<circle cx="${n(it.x)}" cy="${n(it.y)}" r="${it.r}" fill="transparent" data-key="${esc(it.key)}" class="hitp"><title>Клик — исправить код или выделить точку</title></circle>`;
@@ -2388,7 +2389,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- объекты ---------- */
   function rebuild() {
     const prev = new Map(S.objects.map(o => [o.key, o])), objs = [];
-    const get = (key, tlg) => { let o = objs.find(x => x.key === key); if (!o) { const p = prev.get(key); o = { key, tlg, row: null, survey: null, files: [], f: p ? p.f : {}, edited: p ? p.edited : {}, fix: p ? p.fix : {}, fixSkip: p ? p.fixSkip : {}, codeEdit: p ? p.codeEdit : {}, editMark: p ? (p.editMark || {}) : {}, paint: p ? (p.paint || { sg: {}, wl: {} }) : { sg: {}, wl: {} }, wellAngle: p ? p.wellAngle : {}, slabSkip: p ? p.slabSkip : {}, sheetOf: p ? (p.sheetOf || {}) : {}, scaleOf: p ? (p.scaleOf || {}) : {}, roundCh: p ? (p.roundCh || {}) : {}, userShapes: p ? (p.userShapes || []) : [], trench: p ? p.trench : undefined, clockShift: p ? (p.clockShift || 0) : 0, showDiff: p ? p.showDiff : undefined, diffOnly: p ? p.diffOnly : undefined }; objs.push(o); } return o; };
+    const get = (key, tlg) => { let o = objs.find(x => x.key === key); if (!o) { const p = prev.get(key); o = { key, tlg, row: null, survey: null, files: [], f: p ? p.f : {}, edited: p ? p.edited : {}, fix: p ? p.fix : {}, fixSkip: p ? p.fixSkip : {}, codeEdit: p ? p.codeEdit : {}, editMark: p ? (p.editMark || {}) : {}, paint: p ? (p.paint || { sg: {}, wl: {} }) : { sg: {}, wl: {} }, wellAngle: p ? p.wellAngle : {}, slabSkip: p ? p.slabSkip : {}, sheetOf: p ? (p.sheetOf || {}) : {}, scaleOf: p ? (p.scaleOf || {}) : {}, roundCh: p ? (p.roundCh || {}) : {}, userShapes: p ? (p.userShapes || []) : [], hideCh: p ? (p.hideCh || {}) : {}, trench: p ? p.trench : undefined, clockShift: p ? (p.clockShift || 0) : 0, showDiff: p ? p.showDiff : undefined, diffOnly: p ? p.diffOnly : undefined }; objs.push(o); } return o; };
     S.rows.forEach(r => { get(G.normJob(r.tlg), r.tlg).row = r; });
     // ключ объекта: имя файла. Заявка находится по точному совпадению, по началу имени («35959-26dop» → заявка 35959-26) или по имени проекта внутри файла
     const rowKeys = S.rows.map(r => G.normJob(r.tlg)).sort((u, v) => v.length - u.length);
@@ -2435,7 +2436,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     o.gnbTr = o.job ? G.gnbPromery(o.job, { diam: st.draw.gnbDiam || '160' }) : {};
     o.allEdits = Object.assign({}, o.newTr, o.gnbTr, o.codeEdit);
     const job = o.job ? G.renameJob(G.applyFixes(o.job, o.fix, o.allEdits), o.rename || {}) : { name: o.tlg, points: [] };
-    o.model = G.buildModel(job, st.profile, o.edited.netKey ? o.f.netKey : (r ? r.network : ''), { wellAngles: o.wellAngle, noSlabGuess: o.slabSkip, roundChambers: o.roundCh || {}, userShapes: o.userShapes || [], noTypoAsk: o.fixSkip, trenchAuto: o.trench === 'yes', cutLinks: o.cutLinks || {}, segDiam: o.segDiam || {} });
+    o.model = G.buildModel(job, st.profile, o.edited.netKey ? o.f.netKey : (r ? r.network : ''), { wellAngles: o.wellAngle, noSlabGuess: o.slabSkip, roundChambers: o.roundCh || {}, userShapes: o.userShapes || [], hideChambers: o.hideCh || {}, noTypoAsk: o.fixSkip, trenchAuto: o.trench === 'yes', cutLinks: o.cutLinks || {}, segDiam: o.segDiam || {} });
     const act = st.people.performers.find(p => p.id === st.people.active) || st.people.performers[0] || {};
     const date = r && r.date ? r.date : G.ruDate(job.date), ins = st.instruments;
     // состав бригады: из заявки (колонка «Исполнитель»), а если там пусто или выбран «всегда мой состав» — из настроек
@@ -2718,10 +2719,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* щелчок по контуру колодца или камеры: окраска в оранжевый */
   function wellMenu(o, name, ev) {
     const on = !!o.paint.wl[name], us = (o.userShapes || []).find(x => x.pts.map(String).includes(String(name)));
-    popMenu(ev, us ? 'контур «' + (us.label || 'без подписи') + '» · т. ' + us.pts.join(', ') : 'колодец у т. ' + name, [
+    const ch = !us && (o.model.chambers || []).find(c => !c.user && c.points && c.points[0] && String(c.points[0].name) === String(name));
+    const chNames = ch ? ch.points.map(q => q.name) : [];
+    popMenu(ev, us ? 'контур «' + (us.label || 'без подписи') + '» · т. ' + us.pts.join(', ') : ch ? 'контур' + (ch.shapeLabel ? ' «' + ch.shapeLabel + '»' : '') + ' · т. ' + chNames.join(', ') : 'колодец у т. ' + name, [
       us ? ['Изменить контур…', () => shapeDialog(o, us.pts.slice(), us)] : null,
-      us ? ['Удалить контур', () => { o.userShapes = o.userShapes.filter(x => x !== us); compute(o); render(); toast('Контур удалён'); }] : null,
-      [on ? 'Снять оранжевый' : 'Окрасить в оранжевый', () => { if (on) delete o.paint.wl[name]; else o.paint.wl[name] = true; compute(o); render(); toast('Колодец у т. ' + name + (on ? ': окраска снята' : ' окрашен оранжевым')); }, !on],
+      us ? ['Удалить контур', () => delUserShape(o, us)] : null,
+      ch ? ['Перерисовать контур вручную…', () => shapeDialog(o, chNames.map(String), null)] : null,
+      ch ? ['Удалить контур', () => hideAutoShape(o, chNames)] : null,
+      us || (ch && ch.poly && ch.poly.length < 3) ? null : [on ? 'Снять оранжевый' : 'Окрасить в оранжевый', () => { if (on) delete o.paint.wl[name]; else o.paint.wl[name] = true; compute(o); render(); toast('Колодец у т. ' + name + (on ? ': окраска снята' : ' окрашен оранжевым')); }, !on],
       ['Отмена', null]]);
   }
   /* клик по самой точке — меню: исправить код, выделить цветом (или снять выделение) */
@@ -2732,6 +2737,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       h('button', { class: 'btn small', onclick: () => { close(); inlineCode(o, name); } }, 'Исправить код…'),
       h('button', { class: 'btn small', onclick: () => { close(); inlineName(o, name); } }, 'Переименовать пикет…'),
       h('button', { class: 'btn small', onclick: () => { close(); shapeStart(o, name); } }, 'Нарисовать контур от этой точки…'),
+      ...(() => { const us = (o.userShapes || []).find(x => x.pts.map(String).includes(String(name))), ch = !us && (o.model.chambers || []).find(c => !c.user && (c.points || []).some(q => String(q.name) === String(name)));
+        if (us) return [h('button', { class: 'btn small', onclick: () => { close(); shapeDialog(o, us.pts.slice(), us); } }, 'Изменить контур' + (us.label ? ' «' + us.label + '»' : '') + '…'), h('button', { class: 'btn small', onclick: () => { close(); delUserShape(o, us); } }, 'Удалить контур' + (us.label ? ' «' + us.label + '»' : ''))];
+        if (ch) return [h('button', { class: 'btn small', onclick: () => { close(); hideAutoShape(o, ch.points.map(q => q.name)); } }, 'Удалить контур по т. ' + ch.points.map(q => q.name).join(', '))];
+        if (o.hideCh && o.hideCh[name]) return [h('button', { class: 'btn small', onclick: () => { close(); Object.keys(o.hideCh).forEach(k => { delete o.hideCh[k]; }); compute(o); render(); toast('Контуры программы возвращены'); } }, 'Вернуть удалённые контуры программы')];
+        return []; })(),
       p.role === 'point' && o.model.segs.some(sg => sg.toPole && (sg.a === p || sg.b === p)) ? h('button', { class: 'btn small', onclick: () => { close(); const sg = o.model.segs.find(x => x.toPole && (x.a === p || x.b === p)); inlineSeg(o, sg.a.name + '|' + sg.b.name, ev); } }, 'Трубы до опоры…') : null,
       h('button', { class: 'btn small' + (on ? '' : ' primary'), onclick: () => { close(); if (on) delete o.editMark[name]; else o.editMark[name] = true; compute(o); render(); toast(on ? 'Точка ' + name + ': выделение снято' : 'Точка ' + name + ' выделена оранжевым'); } }, on ? 'Снять оранжевый' : 'Окрасить в оранжевый'),
       h('button', { class: 'btn small', onclick: close }, 'Отмена'));
@@ -2740,6 +2750,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     sheet.append(m);
   }
   /* контур вручную: выбрать точки на листе → вид (по 2 противоположным углам / по 3 углам / по всем точкам) и подпись */
+  function delUserShape(o, us) { o.userShapes = (o.userShapes || []).filter(x => x !== us); compute(o); render(); toast('Контур ' + (us.label ? '«' + us.label + '» ' : '') + 'удалён'); }
+  function hideAutoShape(o, names) { o.hideCh = o.hideCh || {}; names.forEach(n => { o.hideCh[n] = true; }); compute(o); render(); toast('Контур по т. ' + names.join(', ') + ' удалён. Вернуть — щелчок по точке → «Вернуть удалённые контуры программы»'); }
   function shapeStart(o, name) { S.linkMode = false; S.shapePick = { key: o.key, pts: [String(name)] }; render(); shapeBar(); toast('Щёлкайте остальные углы контура, затем «Готово»'); }
   function shapeToggle(o, name) { const sp = S.shapePick; if (!sp || sp.key !== o.key) return; name = String(name); const i = sp.pts.indexOf(name); if (i >= 0) sp.pts.splice(i, 1); else sp.pts.push(name); shapeMarks($('.sheet')); shapeBar(); }
   function shapeEnd() { S.shapePick = null; const b = $('#shape-bar'); if (b) b.remove(); render(); }
