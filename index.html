@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Программа для ЭВМ «Абрис», версия 1.87. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
+<!-- Программа для ЭВМ «Абрис», версия 1.88. © d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a. Использование и распространение — с разрешения автора. Сторонние компоненты: PDF.js (Apache-2.0), jsPDF (MIT), JSZip (MIT), шрифты Liberation (SIL OFL 1.1) -->
 <html lang="ru"><head><meta name="author" content="d1sco"><meta name="copyright" content="© d1sco, 2026"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Абрис — съёмка в чертёж и папки</title>
 <style>/* Программа для ЭВМ «Абрис». © d1sco, 2026 */
@@ -592,7 +592,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 /* Абрис — ядро: справочник кодов, чтение PCO/ARE, заявки из PDF, модель трассы */
 (function (root) {
   const G = (root.GEO = root.GEO || {});
-  G.APP = { name: 'Абрис', version: '1.87', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
+  G.APP = { name: 'Абрис', version: '1.88', year: 2026, author: 'd1sco', authorShort: 'd1sco', authorMark: 'sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a', notice: '© d1sco, 2026. Все права защищены. Отпечаток автора sha256:328908ed1181127a9f21b77d19d70a47e4ad0be284785c97777810ddff0d519a' };
 
   /* ---------- Эталонный профиль кодировки ---------- */
   // role: line — точки линии (соединяются по ".."), well — элемент колодца/камеры, point — отдельный знак, control — обоснование
@@ -1128,10 +1128,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
       run = [];
     };
+    { const rs = new Map(); pts.forEach(p => { if (p.slabRing) { if (!rs.has(p.slabRing)) rs.set(p.slabRing, []); rs.get(p.slabRing).push(p); } });   /* плита, замкнутая связями в кольцо: контур в порядке кольца */
+      rs.forEach(list => { const r = list.slice().sort((a, b) => a.ringPos - b.ringPos); out.push({ points: r, built: null, poly: r.map(p => [p.x, p.y]), color: r[0].color, shapeLabel: r[0].shapeLabel || '', ring: true }); }); }
     { const gs = new Map(); pts.forEach(p => { if (p.slabGroup) { if (!gs.has(p.slabGroup)) gs.set(p.slabGroup, []); gs.get(p.slabGroup).push(p); } });   /* плита по связанным углам не подряд */
       gs.forEach(list => { let r = list; if (list.length >= 4) { const cx = list.reduce((t, q) => t + q.x, 0) / list.length, cy = list.reduce((t, q) => t + q.y, 0) / list.length; r = list.slice().sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx)); }
         run = r.slice(0, 8); flush(); }); }
-    pts.forEach(p => { if (p.slabGroup) return; if (p.role === 'chamber' || p.role === 'grate') { const poly = p.shapeKind === 'poly', box = p.shapeKind === 'rect2'; if (run.length && (run[run.length - 1].pc.base !== p.pc.base || (run[run.length - 1].shapeLabel || '') !== (p.shapeLabel || '') || (poly && !p.pc.link) || (poly && Math.hypot(p.x - run[0].x, p.y - run[0].y) > 3) || (box && Math.hypot(p.x - run[0].x, p.y - run[0].y) > 6))) flush(); run.push(p); if (p.role === 'grate' ? run.length === 2 : box ? run.length === 8 : poly ? run.length === 16 : (run.length === 4 && !run.some(r => r.round) || run.length === 8)) flush(); } else flush(); });
+    pts.forEach(p => { if (p.slabGroup || p.slabRing) return; if (p.role === 'chamber' || p.role === 'grate') { const poly = p.shapeKind === 'poly', box = p.shapeKind === 'rect2'; if (run.length && (run[run.length - 1].pc.base !== p.pc.base || (run[run.length - 1].shapeLabel || '') !== (p.shapeLabel || '') || (poly && !p.pc.link) || (poly && Math.hypot(p.x - run[0].x, p.y - run[0].y) > 3) || (box && Math.hypot(p.x - run[0].x, p.y - run[0].y) > 6))) flush(); run.push(p); if (p.role === 'grate' ? run.length === 2 : box ? run.length === 8 : poly ? run.length === 16 : (run.length === 4 && !run.some(r => r.round) || run.length === 8)) flush(); } else flush(); });
     flush(); return out;
   }
 
@@ -1163,6 +1165,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     pts.forEach(p => { if (p.role === 'situ' && p.entry && /опор|столб/i.test(p.entry.name) && p.pc.link && !p.isRef) { p.role = 'point'; p.cross = false; p.poleNet = true; } });
     // плита (верх/низ пл.), снятая углами и связанная «..»: 47_в.пл, 47.._в.пл, 47..11_в.пл — камера по углам, 3 угла — 4-й достраивается пунктиром
     { const isSlab = z => z && z.role === 'well' && !z.isRef && /верх пл|низ пл/.test(z.label || '');
+      /* углы плиты, замкнутые связями в кольцо (25, 26=47.._vp … 30=47..29,25_vp): контур по кольцу, все углы сняты — ничего не достраивается (Г-образная камера) */
+      { const kOf = z => z.pc.base + '|' + (z.pc.kind || ''), byNm = new Map(pts.map(z => [String(z.name), z])), adj = new Map();
+        pts.forEach(z => { if (isSlab(z)) adj.set(z, new Set()); });
+        pts.forEach((z, zi) => { if (!adj.has(z)) return; (z.pc.links || []).forEach(l => { const q = l === 'prev' ? pts[zi - 1] : (byNm.get(String(l)) || byNm.get(String(l).replace(/\.$/, '')));
+          if (q && q !== z && adj.has(q) && kOf(q) === kOf(z) && (z.srcIdx == null || q.srcIdx === z.srcIdx) && Math.hypot(q.x - z.x, q.y - z.y) < 30) { adj.get(z).add(q); adj.get(q).add(z); } }); });
+        const seen = new Set(); let rid = 0;
+        adj.forEach((_, z0) => { if (seen.has(z0)) return; const comp = [], stack = [z0]; seen.add(z0); while (stack.length) { const z = stack.pop(); comp.push(z); adj.get(z).forEach(q => { if (!seen.has(q)) { seen.add(q); stack.push(q); } }); }
+          if (comp.length < 4 || comp.length > 40 || comp.some(z => adj.get(z).size !== 2)) return;
+          const order = [comp.reduce((a, b) => a.idx < b.idx ? a : b)]; let prev = null; while (order.length < comp.length) { const cur = order[order.length - 1], nx = [...adj.get(cur)].find(q => q !== prev && !order.includes(q)); if (!nx) break; prev = cur; order.push(nx); }
+          if (order.length !== comp.length) return; rid++; order.forEach((z, k) => { z.role = 'chamber'; z.slab = true; z.slabRing = rid; z.ringPos = k; }); }); }
       for (let i = 0; i < pts.length; i++) { const a = pts[i]; if (!isSlab(a)) continue; let j = i + 1; const key = a.pc.base + '|' + (a.pc.kind || '');
         while (j < pts.length && isSlab(pts[j]) && pts[j].pc.base + '|' + (pts[j].pc.kind || '') === key && pts[j].pc.link && (a.srcIdx == null || pts[j].srcIdx === a.srcIdx) && Math.hypot(pts[j].x - a.x, pts[j].y - a.y) < 6) j++;
         if (j - i >= 3) { for (let k = i; k < j; k++) { pts[k].role = 'chamber'; pts[k].slab = true; } }
